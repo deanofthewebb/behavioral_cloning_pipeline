@@ -1,0 +1,6 @@
+.ipynb_checkpoints
+__pycache__
+merged_data/
+data/
+beta_simulator_mac/
+.DS_Store
