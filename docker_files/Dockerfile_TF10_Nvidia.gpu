@@ -71,12 +71,13 @@ RUN sh -c "apt-get update && \
     linux-headers-$(uname -r)"
 
 ## Make sure CUDNN is detected Symlink (Using cuda-8.0 binaries) ##
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64/:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64/:$LD_LIBRARY_PATH
 RUN ln -s /usr/local/cuda-8.0/lib64/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libcudnn.so
 
 ## STEP 1C. Verify CUDA 8.0 Installation ##
 RUN cat /proc/driver/nvidia/version
-RUN nvcc -V
+ENV PATH=$PATH:/usr/local/cuda-8.0/bin
+
 # add CUDA samples
 
 ## STEP 1D. Verify/Install NVIDIA cuDNN  ##
