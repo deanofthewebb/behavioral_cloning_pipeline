@@ -1,0 +1,33 @@
+## FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04 ## Attempting to start from scratch with Ubuntu 14.04 ##
+FROM ubuntu
+MAINTAINER @deanofthewebb
+
+## Link user ##
+USER carnd-term1
+
+## Verify Nvidia installed ##
+RUN lspci | grep -i nvidia
+
+## Verify kernel ##
+RUN su {USER} -c "sudo apt-get install linux-headers-$(uname -r)""
+
+## STEP 1. Install NVIDIA CUDA ##
+## STEP 1A. Download and Install repository meta-data ##
+## STEP 1B. Update the Apt repository cache ##
+## STEP 1C. Install CUDA ##
+RUN su {USER} -c "sudo apt-get install linux-headers-$(uname -r)"
+RUN su {USER} -c "wget https://s3-us-west-1.amazonaws.com/sdc-gpu/cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb && /
+    sudo dpkg -i cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb && /
+    sudo apt-get update && /
+    sudo apt-get install cuda && /
+    sudo apt-get install cuda-drivers"
+
+## STEP 1D. Setup Environment Variables ##
+ENV PATH="/usr/local/cuda-8.0/bin${PATH:+:${PATH}}"
+    LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64\
+    ${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+
+## STEP 1E. Test and verify CUDA 8.0 Installation ##
+RUN cuda-install-samples-8.0.sh `pwd` && \
+    cat /proc/driver/nvidia/version && \
+    nvcc -V
