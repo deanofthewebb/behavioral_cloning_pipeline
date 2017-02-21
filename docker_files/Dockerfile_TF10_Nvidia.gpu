@@ -1,5 +1,32 @@
 FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04
 
+## Install Prompt Interactiion Tool ##
+ENV DEBIAN_FRONTEND="noninteractive"
+RUN apt-get update && \
+    apt-get install debconf-utils && \
+    echo debconf shared/accepted-oracle-license-v1-1 select true | \
+    debconf-set-selections && \
+    echo debconf shared/accepted-oracle-license-v1-1 seen true | \
+    debconf-set-selections
+
+## Install OpenJDK-8 Dependencies ##
+RUN apt-get update && \
+    apt-get install -y -q -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" software-properties-common && \
+    apt-get install -y -q -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" python-software-properties
+
+## Silently install Java (open-jdk-8) ##
+RUN apt-get update && \
+    apt-get install -y -q -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" default-jdk
+RUN apt-get update && \
+    add-apt-repository ppa:webupd8team/java && \
+    apt-get update && \
+    apt-get install -y -q -o \
+    Dpkg::Options::="--force-confdef" -o \
+    Dpkg::Options::="--force-confold" \
+    oracle-java8-installer && \
+    echo javac --version
+RUN apt install oracle-java8-set-default
+
 ## STEP 1. Install Tensorflow Package Dependencies ##
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
@@ -10,7 +37,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpng12-dev \
         libzmq3-dev \
         pkg-config \
-        openjdk-8-jdk \
         pciutils \
         build-essential \
         swig \
@@ -34,23 +60,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
 
-## Install open-jdk-8 ##
-RUN apt-get install python-software-properties
-RUN add-apt-repository ppa:webupd8team/java
-RUN apt-get update
-
-
-
-
-## STEP 0. Verify Nvidia installed ##
+## STEP 1A. Verify Nvidia installed ##
 RUN lspci | grep -i nvidia
-RUN bash apt-get install linux-headers-$(uname -r)
+RUN bash -c "apt-get update && \
+    apt-get install -y -q -o \
+    Dpkg::Options::="--force-confdef" -o \
+    Dpkg::Options::="--force-confold" \ linux-headers-$(uname -r)"
 
 ## STEP 1B. Verify CUDA 8.0 Installation ##
 RUN cuda-install-samples-8.0.sh .
 RUN cat /proc/driver/nvidia/version
 RUN nvcc -V
 
+## STEP 1C. Verify/Install NVIDIA cuDNN  ##
+
+## STEP 1D. Install Anaconda ##
 ADD https://repo.continuum.io/miniconda/Miniconda3-4.2.12-Linux-x86_64.sh tmp/Miniconda3-4.2.12-Linux-x86_64.sh
 RUN bash tmp/Miniconda3-4.2.12-Linux-x86_64.sh -b
 ENV PATH=$PATH:/root/miniconda3/bin/
