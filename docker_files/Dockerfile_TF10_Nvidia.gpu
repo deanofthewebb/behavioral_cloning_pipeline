@@ -1,5 +1,10 @@
 FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04
 
+## PART 1. Install Tensorflow Dependencies ##
+## SDC-GPU Working Directory ##
+RUN mkdir /src
+WORKDIR "/src"
+
 ## Install Prompt Interaction Tool ##
 ENV DEBIAN_FRONTEND="noninteractive"
 RUN apt-get update && \
@@ -27,7 +32,7 @@ RUN apt-get update && \
     echo javac --version
 RUN apt install oracle-java8-set-default
 
-## STEP 1. Install Tensorflow Package Dependencies ##
+## Install APT-GET PACKAGES ##
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         vim \
@@ -70,39 +75,79 @@ RUN sh -c "apt-get update && \
         Dpkg::Options::='--force-confold' \
     linux-headers-$(uname -r)"
 
-## Make sure CUDNN is detected Symlink (Using cuda-8.0 binaries) ##
-ENV LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64/:$LD_LIBRARY_PATH
-RUN ln -s /usr/local/cuda-8.0/lib64/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libcudnn.so
-
-## STEP 1C. Verify CUDA 8.0 Installation ##
-RUN cat /proc/driver/nvidia/version
-ENV PATH=$PATH:/usr/local/cuda-8.0/bin
-
-# add CUDA samples
-
-## STEP 1D. Verify/Install NVIDIA cuDNN  ##
-
-## STEP 1E. Install Anaconda ##
-ADD https://repo.continuum.io/miniconda/Miniconda3-4.2.12-Linux-x86_64.sh \
-    tmp/Miniconda3-4.2.12-Linux-x86_64.sh
-RUN bash tmp/Miniconda3-4.2.12-Linux-x86_64.sh -b
-ENV PATH=$PATH:/root/miniconda3/bin/
+## STEP 1C. Install Anaconda ##
+RUN mkdir tmp/ && \
+    curl -o tmp/Miniconda3-4.2.12-Linux-x86_64.sh \
+    https://repo.continuum.io/miniconda/Miniconda3-4.2.12-Linux-x86_64.sh && \
+    bash tmp/Miniconda3-4.2.12-Linux-x86_64.sh -b
+#ENV PATH=$PATH:/root/miniconda3/bin/ "/root/miniconda3/bin${PATH:+:${PATH}}"
+ENV PATH="/root/miniconda3/bin${PATH:+:${PATH}}"
 
 
 COPY environment-gpu.yml  ./environment.yml
-RUN conda env create -f=environment.yml --name sdc-gpu --debug -v
-
-## Clean up tarballs and downloaded package files from installation ##
-RUN conda clean -tp -y
+RUN conda env create -f=environment.yml --name sdc-gpu --debug -v && \
+    conda clean -tp -y
 
 ## Set up Jupyter Notebook config. ##
 COPY docker_files/jupyter_notebook_config.py /root/.jupyter/
 
-# Install Tensorflow GPU 1.0 and test
+## PART 2. Install Tensorflow 1.0 - GPU 1.0 from Source ##
+
+## STEP 2A. Install EXTRA NVIDIA CUDA DRIVERS FOR GPU ##
+RUN mkdir -p tmp/cuda-repo && \
+    curl -o tmp/cuda-repo/cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb \
+    https://s3-us-west-1.amazonaws.com/sdc-gpu/cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb && \
+    dpkg -i tmp/cuda-repo/cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb && \
+    apt-get update && \
+    apt-get install -y -q -o \
+    Dpkg::Options::="--force-confdef" -o \
+    Dpkg::Options::="--force-confold" \
+    cuda && \
+    apt-get install -y -q -o \
+    Dpkg::Options::="--force-confdef" -o \
+    Dpkg::Options::="--force-confold" \
+    cuda-drivers
+
+## STEP 2B. Make sure CUDNN is detected via Symlink ##
+ENV LD_LIBRARY_PATH="/usr/local/cuda-8.0/lib64\
+${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+RUN ln -s /usr/local/cuda-8.0/lib64/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libcudnn.so
+
+## STEP 2C. Setup CUDA 8.0 Environment Variables ##
+ENV PATH="/usr/local/cuda-8.0/bin${PATH:+:${PATH}}"
+
+## STEP 2D. Verify CUDA Installation Version (8.0) ##
+RUN cat /proc/driver/nvidia/version
+RUN nvcc -V
+
+## Test CUDA 8.0 - 'Samples' Script ##
+RUN sh -c "cuda-install-samples-8.0.sh tmp/cuda-repo/"
+
+## STEP 2E. Verify/Install NVIDIA cuDNN  ##
+STEP 2. Install NVIDIA cuDNN
+RUN mkdir -p tmp/cuDNN && \
+    curl -o tmp/cuDNN/cudnn-8.0-linux-x64-v5.1.tgz \
+    https://s3-us-west-1.amazonaws.com/sdc-gpu/cudnn-8.0-linux-x64-v5.1.tgz && \
+    tar -xvf tmp/cuDNN/cudnn-8.0-linux-x64-v5.1-rc.tgz -C /usr/local/cuda-8.0/ && \
+    cp -P /usr/local/cuda/include/cudnn.h /usr/local/cuda-8.0/include/ && \
+    cp -P /usr/local/cuda/lib64/libcudnn* /usr/local/cuda-8.0/lib64/ && \
+    chmod a+r /usr/local/cuda-8.0/include/cudnn.h /usr/local/cuda-8.0/lib64/libcudnn*
+
+## STEP 2F. Install NVIDIA CUDA Profile Tools Interface ##
+RUN apt-get update && \
+    apt-get install -y -q -o \
+    Dpkg::Options::="--force-confdef" -o \
+    Dpkg::Options::="--force-confold" \
+    libcupti-dev
+
+## STEP 3. Install Tensorflow - PIP INSTALLATION ##
 RUN pip3 install --upgrade pip && \
-pip3 install --upgrade https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.0.0-cp35-cp35m-linux_x86_64.whl
-RUN nvidia-docker-plugin run -l 2222 --rm tensorflow/tensorflow:latest-gpu python -c 'import tensorflow as tf ; print tf.__version__'
+    pip3 install --upgrade https://storage.googleapis.com/tensorflow/linux/gpu/\
+    tensorflow_gpu-1.0.0-cp35-cp35m-linux_x86_64.whl && \
+    nvidia-docker-plugin run -l 2222 --rm tensorflow/tensorflow:latest-gpu python -c \
+    'import tensorflow as tf ; print tf.__version__'
 RUN time python3 -m tensorflow.models.image.mnist.convolutional
+
 
 # TensorBoard
 EXPOSE 6006
@@ -111,13 +156,9 @@ EXPOSE 5000-10000
 # Flask Server
 EXPOSE 4567
 
-# SDC-GPU Work Directory ##
-RUN mkdir /src
-WORKDIR "/src"
-
 ## Two Birds, One Stone Implementation ##
-# 1. sources conda environment
-# 2. prevents the zombie container issue when started as pid 1
+# 1. sources conda environment #
+# 2. prevents the zombie container issue when started as pid 1 #
 COPY docker_files/run.sh /
 
 ## Run Entrypoint Script ##
