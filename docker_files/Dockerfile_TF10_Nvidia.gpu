@@ -1,6 +1,6 @@
 FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04
 
-## Install Prompt Interactiion Tool ##
+## Install Prompt Interaction Tool ##
 ENV DEBIAN_FRONTEND="noninteractive"
 RUN apt-get update && \
     apt-get install debconf-utils && \
@@ -62,41 +62,52 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ## STEP 1A. Verify Nvidia installed ##
 RUN lspci | grep -i nvidia
-RUN bash -c "apt-get update && \
-    apt-get install -y -q -o \
-    Dpkg::Options::="--force-confdef" -o \
-    Dpkg::Options::="--force-confold" \ linux-headers-$(uname -r)"
 
-## STEP 1B. Verify CUDA 8.0 Installation ##
+## STEP 1B. Install Linux Headers for Nvidia ##
+#RUN apt-get update && \
+#    apt-get upgrade-dist -o \
+#    Dpkg::Options::="--force-confdef" -o \
+#    Dpkg::Options::="--force-confold" \
+RUN sh -c "apt-get update && \
+        apt-get install -y -q -o \
+        Dpkg::Options::='--force-confdef' -o \
+        Dpkg::Options::='--force-confold' \
+    linux-headers-$(uname -r)"
+
+## STEP 1C. Verify CUDA 8.0 Installation ##
 RUN cuda-install-samples-8.0.sh .
 RUN cat /proc/driver/nvidia/version
 RUN nvcc -V
 
-## STEP 1C. Verify/Install NVIDIA cuDNN  ##
+## STEP 1D. Verify/Install NVIDIA cuDNN  ##
 
-## STEP 1D. Install Anaconda ##
-ADD https://repo.continuum.io/miniconda/Miniconda3-4.2.12-Linux-x86_64.sh tmp/Miniconda3-4.2.12-Linux-x86_64.sh
+## STEP 1E. Install Anaconda ##
+ADD https://repo.continuum.io/miniconda/Miniconda3-4.2.12-Linux-x86_64.sh \
+    tmp/Miniconda3-4.2.12-Linux-x86_64.sh
 RUN bash tmp/Miniconda3-4.2.12-Linux-x86_64.sh -b
 ENV PATH=$PATH:/root/miniconda3/bin/
 
-COPY environment-gpu.yml  ./environment.yml
-RUN conda env create -f=environment.yml --name carnd-term1 --debug -v -v
 
-# cleanup tarballs and downloaded package files
+COPY environment-gpu.yml  ./environment.yml
+RUN conda env create -f=environment.yml --name sdc-gpu --debug -v
+
+## Clean up tarballs and downloaded package files from installation ##
 RUN conda clean -tp -y
 
-# Set up our notebook config.
+## Set up Jupyter Notebook config. ##
 COPY docker_files/jupyter_notebook_config.py /root/.jupyter/
 
-# Term 1 workdir
+# SDC-GPU Work Directory ##
 RUN mkdir /src
 WORKDIR "/src"
 
 ## Make sure CUDNN is detected Symlink (Using cuda-8.0 binaries) ##
 ENV LD_LIBRARY_PATH /usr/local/cuda/lib64/:$LD_LIBRARY_PATH
 RUN ln -s /usr/local/cuda-8.0/lib64/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libcudnn.so
-## Copy from source container ##
-COPY  /usr/local/cuda-8.0/ /usr/local/cuda-8.0/
+
+## Copy CUDA libraries from source container ##
+COPY /usr/local/cuda/ /usr/local/cuda/
+COPY /usr/local/cuda-8.0/ /usr/local/cuda-8.0/
 
 # Install Tensorflow GPU 1.0 and test
 RUN pip3 install --upgrade pip && \
@@ -111,10 +122,11 @@ EXPOSE 5000-10000
 # Flask Server
 EXPOSE 4567
 
-## Two Birds, One Stone
+## Two Birds, One Stone Implementation ##
 # 1. sources conda environment
 # 2. prevents the zombie container issue when started as pid 1
 COPY docker_files/run.sh /
 
+## Run Entrypoint Script ##
 RUN chmod +x /run.sh
 ENTRYPOINT ["/run.sh"]
