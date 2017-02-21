@@ -64,20 +64,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN lspci | grep -i nvidia
 
 ## STEP 1B. Install Linux Headers for Nvidia ##
-#RUN apt-get update && \
-#    apt-get upgrade-dist -o \
-#    Dpkg::Options::="--force-confdef" -o \
-#    Dpkg::Options::="--force-confold" \
 RUN sh -c "apt-get update && \
         apt-get install -y -q -o \
         Dpkg::Options::='--force-confdef' -o \
         Dpkg::Options::='--force-confold' \
     linux-headers-$(uname -r)"
 
+## Make sure CUDNN is detected Symlink (Using cuda-8.0 binaries) ##
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64/:$LD_LIBRARY_PATH
+RUN ln -s /usr/local/cuda-8.0/lib64/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libcudnn.so
+
 ## STEP 1C. Verify CUDA 8.0 Installation ##
-RUN cuda-install-samples-8.0.sh .
 RUN cat /proc/driver/nvidia/version
 RUN nvcc -V
+# add CUDA samples
 
 ## STEP 1D. Verify/Install NVIDIA cuDNN  ##
 
@@ -97,18 +97,6 @@ RUN conda clean -tp -y
 ## Set up Jupyter Notebook config. ##
 COPY docker_files/jupyter_notebook_config.py /root/.jupyter/
 
-# SDC-GPU Work Directory ##
-RUN mkdir /src
-WORKDIR "/src"
-
-## Make sure CUDNN is detected Symlink (Using cuda-8.0 binaries) ##
-ENV LD_LIBRARY_PATH /usr/local/cuda/lib64/:$LD_LIBRARY_PATH
-RUN ln -s /usr/local/cuda-8.0/lib64/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libcudnn.so
-
-## Copy CUDA libraries from source container ##
-COPY /usr/local/cuda/ /usr/local/cuda/
-COPY /usr/local/cuda-8.0/ /usr/local/cuda-8.0/
-
 # Install Tensorflow GPU 1.0 and test
 RUN pip3 install --upgrade pip && \
 pip3 install --upgrade https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.0.0-cp35-cp35m-linux_x86_64.whl
@@ -121,6 +109,10 @@ EXPOSE 6006
 EXPOSE 5000-10000
 # Flask Server
 EXPOSE 4567
+
+# SDC-GPU Work Directory ##
+RUN mkdir /src
+WORKDIR "/src"
 
 ## Two Birds, One Stone Implementation ##
 # 1. sources conda environment
