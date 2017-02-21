@@ -1,33 +1,96 @@
-## FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04 ## Attempting to start from scratch with Ubuntu 14.04 ##
-FROM ubuntu
-MAINTAINER @deanofthewebb
+FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04
 
-## Link user ##
-USER carnd-term1
+## STEP 1. Install Tensorflow Package Dependencies ##
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        vim \
+        curl \
+        libcurl3-dev \
+        libfreetype6-dev \
+        libpng12-dev \
+        libzmq3-dev \
+        pkg-config \
+        openjdk-8-jdk \
+        pciutils \
+        build-essential \
+        swig \
+	python \
+        python-numpy \
+        python3-numpy \
+        python-dev \
+        python3-dev \
+        python-pip \
+        python3-pip \
+        python-virtualenv \
+        python-wheel \
+        rsync \
+        software-properties-common \
+        unzip \
+        libgtk2.0-0 \
+        git \
+	tcl-dev \
+	tk-dev \
+        && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/
 
-## Verify Nvidia installed ##
+## Install open-jdk-8 ##
+RUN apt-get install python-software-properties
+RUN add-apt-repository ppa:webupd8team/java
+RUN apt-get update
+
+
+
+
+## STEP 0. Verify Nvidia installed ##
 RUN lspci | grep -i nvidia
+RUN bash apt-get install linux-headers-$(uname -r)
 
-## Verify kernel ##
-RUN su {USER} -c "sudo apt-get install linux-headers-$(uname -r)""
+## STEP 1B. Verify CUDA 8.0 Installation ##
+RUN cuda-install-samples-8.0.sh .
+RUN cat /proc/driver/nvidia/version
+RUN nvcc -V
 
-## STEP 1. Install NVIDIA CUDA ##
-## STEP 1A. Download and Install repository meta-data ##
-## STEP 1B. Update the Apt repository cache ##
-## STEP 1C. Install CUDA ##
-RUN su {USER} -c "sudo apt-get install linux-headers-$(uname -r)"
-RUN su {USER} -c "wget https://s3-us-west-1.amazonaws.com/sdc-gpu/cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb && /
-    sudo dpkg -i cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb && /
-    sudo apt-get update && /
-    sudo apt-get install cuda && /
-    sudo apt-get install cuda-drivers"
+ADD https://repo.continuum.io/miniconda/Miniconda3-4.2.12-Linux-x86_64.sh tmp/Miniconda3-4.2.12-Linux-x86_64.sh
+RUN bash tmp/Miniconda3-4.2.12-Linux-x86_64.sh -b
+ENV PATH=$PATH:/root/miniconda3/bin/
 
-## STEP 1D. Setup Environment Variables ##
-ENV PATH="/usr/local/cuda-8.0/bin${PATH:+:${PATH}}"
-    LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64\
-    ${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+COPY environment-gpu.yml  ./environment.yml
+RUN conda env create -f=environment.yml --name carnd-term1 --debug -v -v
 
-## STEP 1E. Test and verify CUDA 8.0 Installation ##
-RUN cuda-install-samples-8.0.sh `pwd` && \
-    cat /proc/driver/nvidia/version && \
-    nvcc -V
+# cleanup tarballs and downloaded package files
+RUN conda clean -tp -y
+
+# Set up our notebook config.
+COPY docker_files/jupyter_notebook_config.py /root/.jupyter/
+
+# Term 1 workdir
+RUN mkdir /src
+WORKDIR "/src"
+
+## Make sure CUDNN is detected Symlink (Using cuda-8.0 binaries) ##
+ENV LD_LIBRARY_PATH /usr/local/cuda/lib64/:$LD_LIBRARY_PATH
+RUN ln -s /usr/local/cuda-8.0/lib64/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libcudnn.so
+## Copy from source container ##
+COPY  /usr/local/cuda-8.0/ /usr/local/cuda-8.0/
+
+# Install Tensorflow GPU 1.0 and test
+RUN pip3 install --upgrade pip && \
+pip3 install --upgrade https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.0.0-cp35-cp35m-linux_x86_64.whl
+RUN nvidia-docker-plugin run -l 2222 --rm tensorflow/tensorflow:latest-gpu python -c 'import tensorflow as tf ; print tf.__version__'
+RUN time python3 -m tensorflow.models.image.mnist.convolutional
+
+# TensorBoard
+EXPOSE 6006
+# Jupyter
+EXPOSE 5000-10000
+# Flask Server
+EXPOSE 4567
+
+## Two Birds, One Stone
+# 1. sources conda environment
+# 2. prevents the zombie container issue when started as pid 1
+COPY docker_files/run.sh /
+
+RUN chmod +x /run.sh
+ENTRYPOINT ["/run.sh"]
