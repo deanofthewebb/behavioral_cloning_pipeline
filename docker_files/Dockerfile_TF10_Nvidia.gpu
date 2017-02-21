@@ -124,7 +124,7 @@ RUN nvcc -V
 RUN sh -c "cuda-install-samples-8.0.sh tmp/cuda-repo/"
 
 ## STEP 2E. Verify/Install NVIDIA cuDNN  ##
-STEP 2. Install NVIDIA cuDNN
+## STEP 2. Install NVIDIA cuDNN
 RUN mkdir -p tmp/cuDNN && \
     curl -o tmp/cuDNN/cudnn-8.0-linux-x64-v5.1.tgz \
     https://s3-us-west-1.amazonaws.com/sdc-gpu/cudnn-8.0-linux-x64-v5.1.tgz && \
