@@ -1,9 +1,8 @@
 FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04
 
 ## PART 1. Install Tensorflow Dependencies ##
-## SDC-GPU Working Directory ##
-RUN mkdir /src
-WORKDIR "/src"
+## Docker Working Directory ##
+WORKDIR "/opt"
 
 ## Install Prompt Interaction Tool ##
 ENV DEBIAN_FRONTEND="noninteractive"
@@ -111,7 +110,7 @@ RUN mkdir -p tmp/cuda-repo && \
 ## STEP 2B. Make sure CUDNN is detected via Symlink ##
 ENV LD_LIBRARY_PATH="/usr/local/cuda-8.0/lib64\
 ${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-RUN ln -s /usr/local/cuda-8.0/lib64/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libcudnn.so
+RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libcudnn.so
 
 ## STEP 2C. Setup CUDA 8.0 Environment Variables ##
 ENV PATH="/usr/local/cuda-8.0/bin${PATH:+:${PATH}}"
@@ -121,17 +120,17 @@ RUN cat /proc/driver/nvidia/version
 RUN nvcc -V
 
 ## Test CUDA 8.0 - 'Samples' Script ##
-RUN sh -c "cuda-install-samples-8.0.sh tmp/cuda-repo/"
+RUN sh -c "cuda-install-samples-8.0.sh $WORKDIR/tmp/cuda-repo/"
 
-## STEP 2E. Verify/Install NVIDIA cuDNN  ##
+## STEP 2E. Extract/Install NVIDIA cuDNN  ##
 ## STEP 2. Install NVIDIA cuDNN
-RUN mkdir -p tmp/cuDNN && \
-    curl -o tmp/cuDNN/cudnn-8.0-linux-x64-v5.1.tgz \
-    https://s3-us-west-1.amazonaws.com/sdc-gpu/cudnn-8.0-linux-x64-v5.1.tgz && \
-    tar -xvf tmp/cuDNN/cudnn-8.0-linux-x64-v5.1-rc.tgz -C /usr/local/cuda-8.0/ && \
-    cp -P /usr/local/cuda/include/cudnn.h /usr/local/cuda-8.0/include/ && \
-    cp -P /usr/local/cuda/lib64/libcudnn* /usr/local/cuda-8.0/lib64/ && \
-    chmod a+r /usr/local/cuda-8.0/include/cudnn.h /usr/local/cuda-8.0/lib64/libcudnn*
+RUN mkdir -p $WORKDIR/tmp/cuDNN/
+RUN curl -o $WORKDIR/tmp/cuDNN/cudnn-8.0-linux-x64-v5.1.tgz https://s3-us-west-1.amazonaws.com/sdc-gpu/cudnn-8.0-linux-x64-v5.1.tgz && \
+    tar -xvzf $WORKDIR/tmp/cuDNN/cudnn-8.0-linux-x64-v5.1.tgz -C /usr/local/cuda-8.0/
+RUN bash -c "cp -P /usr/local/cuda-8.0/cuda/include/cudnn.h /usr/local/cuda-8.0/include/"
+RUN cp -P /usr/lib/x86_64-linux-gnu/libcudnn* /usr/local/cuda-8.0/lib64/
+RUN bash -c "chmod a+r /usr/local/cuda-8.0/include/cudnn.h \
+/usr/local/cuda-8.0/lib64/libcudnn*"
 
 ## STEP 2F. Install NVIDIA CUDA Profile Tools Interface ##
 RUN apt-get update && \
@@ -139,6 +138,14 @@ RUN apt-get update && \
     Dpkg::Options::="--force-confdef" -o \
     Dpkg::Options::="--force-confold" \
     libcupti-dev
+
+## STEP 2G. Install Nvidia-Docker Nvidia-Docker-Plugin ##
+## Install nvidia-docker and nvidia-docker-plugin ##
+RUN wget -P /tmp https://github.com/NVIDIA/nvidia-docker/releases/download/v1.0.0/nvidia-docker_1.0.0-1_amd64.deb
+RUN dpkg -i /tmp/nvidia-docker*.deb && rm /tmp/nvidia-docker*.deb
+
+# Test nvidia-smi
+RUN nvidia-docker run --rm nvidia/cuda nvidia-smi
 
 ## STEP 3. Install Tensorflow - PIP INSTALLATION ##
 RUN pip3 install --upgrade pip && \
@@ -152,7 +159,7 @@ RUN time python3 -m tensorflow.models.image.mnist.convolutional
 # TensorBoard
 EXPOSE 6006
 # Jupyter
-EXPOSE 5000-10000
+EXPOSE 8000-9000
 # Flask Server
 EXPOSE 4567
 
@@ -160,6 +167,10 @@ EXPOSE 4567
 # 1. sources conda environment #
 # 2. prevents the zombie container issue when started as pid 1 #
 COPY docker_files/run.sh /
+
+## SDC-GPU Working Directory ##
+RUN mkdir /src
+WORKDIR "/src"
 
 ## Run Entrypoint Script ##
 RUN chmod +x /run.sh
