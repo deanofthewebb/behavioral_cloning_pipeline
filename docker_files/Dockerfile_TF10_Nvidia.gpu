@@ -107,6 +107,40 @@ RUN mkdir -p tmp/cuda-repo && \
     Dpkg::Options::="--force-confold" \
     cuda-drivers
 
+## Install More CUDA Capabilities ##
+LABEL com.nvidia.volumes.needed="nvidia_driver"
+
+ENV NVIDIA_GPGKEY_SUM bd841d59a27a406e513db7d405550894188a4c1cd96bf8aa4f82f1b39e0b5c1c
+ENV NVIDIA_GPGKEY_FPR 889bee522da690103c4b085ed88c3d385c37d3be
+
+RUN apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/GPGKEY && \
+apt-key adv --export --no-emit-version -a $NVIDIA_GPGKEY_FPR | tail -n +2 > cudasign.pub && \
+echo "$NVIDIA_GPGKEY_SUM  cudasign.pub" | sha256sum -c --strict - && rm cudasign.pub && \
+echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+
+ENV CUDA_VERSION 8.0
+LABEL com.nvidia.cuda.version="8.0"
+
+ENV CUDA_PKG_VERSION 8-0=8.0.61-1
+RUN apt-get update && apt-get install -y --no-install-recommends --force-yes \
+        cuda-nvrtc-$CUDA_PKG_VERSION \
+        cuda-cusolver-$CUDA_PKG_VERSION \
+        cuda-cublas-$CUDA_PKG_VERSION \
+        cuda-cufft-$CUDA_PKG_VERSION \
+        cuda-curand-$CUDA_PKG_VERSION \
+        cuda-cusparse-$CUDA_PKG_VERSION \
+        cuda-npp-$CUDA_PKG_VERSION \
+        cuda-cudart-$CUDA_PKG_VERSION && \
+    ln -s cuda-$CUDA_VERSION /usr/local/cuda && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN echo "/usr/local/cuda/lib" >> /etc/ld.so.conf.d/cuda.conf && \
+    echo "/usr/local/cuda/lib64" >> /etc/ld.so.conf.d/cuda.conf && \
+    ldconfig
+
+RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
+    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+
 ## STEP 2B. Make sure CUDNN is detected via Symlink ##
 ENV LD_LIBRARY_PATH="/usr/local/cuda-8.0/lib64\
 ${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
@@ -114,6 +148,7 @@ RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/local/cuda-8.0/lib64/libc
 
 ## STEP 2C. Setup CUDA 8.0 Environment Variables ##
 ENV PATH="/usr/local/cuda-8.0/bin${PATH:+:${PATH}}"
+ENV CUDA_HOME=/usr/local/cuda-8.0/
 
 ## STEP 2D. Verify CUDA Installation Version (8.0) ##
 RUN cat /proc/driver/nvidia/version
@@ -121,6 +156,19 @@ RUN nvcc -V
 
 ## Test CUDA 8.0 - 'Samples' Script ##
 RUN sh -c "cuda-install-samples-8.0.sh $WORKDIR/tmp/cuda-repo/"
+
+# Put symlinks in /usr/local/cuda
+RUN bash -c "mkdir -p /usr/local/cuda  && \
+    cd /usr/local/cuda  && \
+    ln -s  /usr/lib/x86_64-linux-gnu/ lib64  && \
+    ln -s  /usr/include/ include  && \
+    ln -s  /usr/bin/ bin  && \
+    ln -s  /usr/lib/x86_64-linux-gnu/ nvvm  && \
+    mkdir -p extras/CUPTI  && \
+    cd extras/CUPTI  && \
+    ln -s  /usr/lib/x86_64-linux-gnu/ lib64  && \
+    ln -s  /usr/include/ include"
+
 
 ## STEP 2E. Extract/Install NVIDIA cuDNN  ##
 ## STEP 2. Install NVIDIA cuDNN
@@ -132,20 +180,32 @@ RUN cp -P /usr/lib/x86_64-linux-gnu/libcudnn* /usr/local/cuda-8.0/lib64/
 RUN bash -c "chmod a+r /usr/local/cuda-8.0/include/cudnn.h \
 /usr/local/cuda-8.0/lib64/libcudnn*"
 
-## STEP 2F. Install NVIDIA CUDA Profile Tools Interface ##
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends -q -o\
+  Dpkg::Options::="--force-confdef" -o \
+  Dpkg::Options::="--force-confold" \
+  linux-image-extra-$(uname -r)
+
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends -q -o\
+  Dpkg::Options::="--force-confdef" -o \
+  Dpkg::Options::="--force-confold" \
+  linux-image-extra-virtual
+
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends -q -o\
+  Dpkg::Options::="--force-confdef" -o \
+  Dpkg::Options::="--force-confold" \
+  apt-transport-https
+
+RUN bash -c "echo 'deb http://us.archive.ubuntu.com/ubuntu trusty main multiverse' >>\
+ /etc/apt/sources.list"
+ 
 RUN apt-get update && \
     apt-get install -y -q -o \
     Dpkg::Options::="--force-confdef" -o \
     Dpkg::Options::="--force-confold" \
     libcupti-dev
-
-## STEP 2G. Install Nvidia-Docker Nvidia-Docker-Plugin ##
-## Install nvidia-docker and nvidia-docker-plugin ##
-RUN wget -P /tmp https://github.com/NVIDIA/nvidia-docker/releases/download/v1.0.0/nvidia-docker_1.0.0-1_amd64.deb
-RUN dpkg -i /tmp/nvidia-docker*.deb && rm /tmp/nvidia-docker*.deb
-
-# Test nvidia-smi
-RUN nvidia-docker run --rm nvidia/cuda nvidia-smi
 
 ## STEP 3. Install Tensorflow - PIP INSTALLATION ##
 RUN pip3 install --upgrade pip && \
