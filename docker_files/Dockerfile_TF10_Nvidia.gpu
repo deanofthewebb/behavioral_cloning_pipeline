@@ -1,6 +1,7 @@
 FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04
 
-## PART 1. Install Tensorflow Dependencies ##
+### PART 1. Install Tensorflow Dependencies ###
+
 ## Docker Working Directory ##
 WORKDIR "/opt"
 
@@ -18,7 +19,7 @@ RUN apt-get update && \
     apt-get install -y -q -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" software-properties-common && \
     apt-get install -y -q -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" python-software-properties
 
-## Silently install Java (open-jdk-8) ##
+## Install Java (OpenJDK-8) ##
 RUN apt-get update && \
     apt-get install -y -q -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" default-jdk
 RUN apt-get update && \
@@ -64,6 +65,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
 
+## Install Nvidia Drivers (If not Installed) ##
+RUN add-apt-repository ppa:graphics-drivers/ppa && \
+    apt update
+
 ## STEP 1A. Verify Nvidia installed ##
 RUN lspci | grep -i nvidia
 
@@ -84,18 +89,16 @@ ENV PATH="/root/miniconda3/bin${PATH:+:${PATH}}"
 
 
 COPY environment-gpu.yml  ./environment.yml
-RUN conda env create -f=environment.yml --name sdc-gpu --debug -v && \
+RUN conda env create -f=environment.yml --name tf-gpu --debug -v && \
     conda clean -tp -y
 
 ## Set up Jupyter Notebook config. ##
 COPY docker_files/jupyter_notebook_config.py /root/.jupyter/
 
-## PART 2. Install Tensorflow 1.0 - GPU 1.0 from Source ##
-
-## STEP 2A. Install EXTRA NVIDIA CUDA DRIVERS FOR GPU ##
+## STEP 2. Install EXTRA NVIDIA CUDA DRIVERS FOR GPU ##
 RUN mkdir -p tmp/cuda-repo && \
     curl -o tmp/cuda-repo/cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb \
-    https://s3-us-west-1.amazonaws.com/sdc-gpu/cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb && \
+    https://s3-us-west-1.amazonaws.com/tf-gpu-binaries/cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb && \
     dpkg -i tmp/cuda-repo/cuda-repo-ubuntu1404-8-0-local-ga2_8.0.61-1_amd64.deb && \
     apt-get update && \
     apt-get install -y -q -o \
@@ -107,7 +110,7 @@ RUN mkdir -p tmp/cuda-repo && \
     Dpkg::Options::="--force-confold" \
     cuda-drivers
 
-## Install More CUDA Capabilities ##
+## STEP 2A. Install More CUDA Capabilities ##
 LABEL com.nvidia.volumes.needed="nvidia_driver"
 
 ENV NVIDIA_GPGKEY_SUM bd841d59a27a406e513db7d405550894188a4c1cd96bf8aa4f82f1b39e0b5c1c
@@ -157,7 +160,7 @@ RUN nvcc -V
 ## Test CUDA 8.0 - 'Samples' Script ##
 RUN sh -c "cuda-install-samples-8.0.sh $WORKDIR/tmp/cuda-repo/"
 
-# Put symlinks in /usr/local/cuda
+## Put symlinks in /usr/local/cuda ##
 RUN bash -c "mkdir -p /usr/local/cuda  && \
     cd /usr/local/cuda  && \
     ln -s  /usr/lib/x86_64-linux-gnu/ lib64  && \
@@ -171,9 +174,9 @@ RUN bash -c "mkdir -p /usr/local/cuda  && \
 
 
 ## STEP 2E. Extract/Install NVIDIA cuDNN  ##
-## STEP 2. Install NVIDIA cuDNN
 RUN mkdir -p $WORKDIR/tmp/cuDNN/
-RUN curl -o $WORKDIR/tmp/cuDNN/cudnn-8.0-linux-x64-v5.1.tgz https://s3-us-west-1.amazonaws.com/sdc-gpu/cudnn-8.0-linux-x64-v5.1.tgz && \
+RUN curl -o $WORKDIR/tmp/cuDNN/cudnn-8.0-linux-x64-v5.1.tgz \
+    https://s3-us-west-1.amazonaws.com/tf-gpu-binaries/cudnn-8.0-linux-x64-v5.1.tgz && \
     tar -xvzf $WORKDIR/tmp/cuDNN/cudnn-8.0-linux-x64-v5.1.tgz -C /usr/local/cuda-8.0/
 RUN bash -c "cp -P /usr/local/cuda-8.0/cuda/include/cudnn.h /usr/local/cuda-8.0/include/"
 RUN cp -P /usr/lib/x86_64-linux-gnu/libcudnn* /usr/local/cuda-8.0/lib64/
@@ -200,21 +203,62 @@ RUN apt-get update && \
 
 RUN bash -c "echo 'deb http://us.archive.ubuntu.com/ubuntu trusty main multiverse' >>\
  /etc/apt/sources.list"
- 
+
 RUN apt-get update && \
     apt-get install -y -q -o \
     Dpkg::Options::="--force-confdef" -o \
     Dpkg::Options::="--force-confold" \
     libcupti-dev
 
-## STEP 3. Install Tensorflow - PIP INSTALLATION ##
-RUN pip3 install --upgrade pip && \
-    pip3 install --upgrade https://storage.googleapis.com/tensorflow/linux/gpu/\
-    tensorflow_gpu-1.0.0-cp35-cp35m-linux_x86_64.whl && \
-    nvidia-docker-plugin run -l 2222 --rm tensorflow/tensorflow:latest-gpu python -c \
-    'import tensorflow as tf ; print tf.__version__'
-RUN time python3 -m tensorflow.models.image.mnist.convolutional
+### STEP 3. Install Bazel ###
+RUN echo "deb http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list && \
+    curl https://storage.googleapis.com/bazel-apt/doc/apt-key.pub.gpg | apt-key add - && \
+    sudo apt-get update && \
+    sudo apt-get install bazel
 
+## STEP 3A. Install ComputeCpp/Open CL ##
+RUN mkdir -p $WORKDIR/tmp/computeCPP/
+RUN curl -o $WORKDIR/tmp/computeCPP/ComputeCpp-CE-0.1.2-Ubuntu.14.04-64bit.tar.gz \
+    https://s3-us-west-1.amazonaws.com/tf-gpu-binaries/ComputeCpp-CE-0.1.2-Ubuntu.14.04-64bit.tar.gz && \
+    tar -xvzf $WORKDIR/tmp/computeCPP/ComputeCpp-CE-0.1.2-Ubuntu.14.04-64bit.tar.gz -C /usr/local/cuda-8.0/
+
+## STEP 3B. Export environment variables for tensorflow configuration ##
+ENV PYTHON_BIN_PATH="/usr/lib/bin/python3"
+    TF_GIT_VERSION="v1.0.0"
+    fromuser="1"
+    TF_NEED_JEMALLOC="1"
+    TF_ENABLE_XLA="1"
+    TF_NEED_GCP="1"
+    TF_NEED_OPENCL="1"
+    TF_NEED_HDFS="1"
+    TF_NEED_CUDA="1"
+    CC_OPT_FLAGS="-march=native"
+    GCC_HOST_COMPILER_PATH="`which gcc || true)`"
+    TF_CUDA_VERSION="8.0"
+    CUDA_TOOLKIT_PATH="/usr/local/cuda-8.0"
+    CUDA_PATH="`cygpath -m ${CUDA_PATH}`"
+    TF_CUDNN_VERSION="5.1"
+    CUDNN_INSTALL_PATH=$CUDA_TOOLKIT_PATH
+    TF_CUDA_COMPUTE_CAPABILITIES="3.0"
+    HOST_CXX_COMPILER="$(which clang++-3.6 || true)"
+    HOST_C_COMPILER="$(which clang-3.6 || true)"
+    COMPUTECPP_TOOLKIT_PATH="/usr/local/cuda-8.0"
+
+## STEP 3C. Clone TensorFlow repo and Git reset to TF_VERSION ##
+RUN bash -c "git clone https://github.com/tensorflow/tensorflow $WORKDIR/tmp/tensorflow && \
+    cd $WORKDIR/tmp/tensorflow && \
+    git reset --hard $TF_GIT_VERSION && \
+    ./configure"
+
+## STEP 3D. Build TensorFlow pip package with Bazel ##
+RUN bash -c "bazel build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package && \
+    bazel-bin/tensorflow/tools/pip_package/build_pip_package \
+$WORKDIR/tmp/tensorflow_pkg"
+
+## STEP 3E. Upgrade PIP and install TensorFlow ##
+RUN pip3 install --upgrade pip && \
+    pip3 install --upgrade $WORKDIR/tmp/tensorflow_pkg/tensorflow-1.0.0-*.whl
+RUN time python3 -m tensorflow.models.image.mnist.convolutional
 
 # TensorBoard
 EXPOSE 6006
@@ -223,14 +267,14 @@ EXPOSE 8000-9000
 # Flask Server
 EXPOSE 4567
 
-## Two Birds, One Stone Implementation ##
-# 1. sources conda environment #
-# 2. prevents the zombie container issue when started as pid 1 #
-COPY docker_files/run.sh /
-
-## SDC-GPU Working Directory ##
+## TF-GPU Working Directory ##
 RUN mkdir /src
 WORKDIR "/src"
+
+## Two Birds, One Stone Implementation ##
+## 1. sources conda environment ##
+## 2. prevents the zombie container issue when started as pid 1 ##
+COPY docker_files/run.sh /
 
 ## Run Entrypoint Script ##
 RUN chmod +x /run.sh
