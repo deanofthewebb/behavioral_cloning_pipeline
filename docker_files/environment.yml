@@ -1,4 +1,4 @@
-name: carnd-term1
+name: tf-gpu
 channels:
     - https://conda.anaconda.org/menpo
     - conda-forge
