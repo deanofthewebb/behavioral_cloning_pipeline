@@ -21,4 +21,5 @@ dependencies:
     - pip:
         - moviepy
         - git+https://github.com/fchollet/keras.git
-        - /opt/tmp/tensorflow_pkg/tensorflow-1.0.0-*.whl
+    - pip3
+    - accelerate
