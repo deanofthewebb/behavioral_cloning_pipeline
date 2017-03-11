@@ -1,4 +1,5 @@
 FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04
+## Docker Installation of TensorFlow 1.0 with GPU in Anaconda env [Ubuntu 14.04 + CUDA 8.0 + cuDNN] ##
 
 ## Docker Working Directory ##
 WORKDIR "/opt"
@@ -436,7 +437,7 @@ ENV PYTHON_BIN_PATH="/root/miniconda3/envs/tf-gpu/bin/python3" \
     CUDA_PATH=$CUDA_HOME \
     TF_CUDNN_VERSION="5.1" \
     CUDNN_INSTALL_PATH=$CUDA_TOOLKIT_PATH \
-    TF_CUDA_COMPUTE_CAPABILITIES="3.0" \
+    TF_CUDA_COMPUTE_CAPABILITIES="3.0,3.5,5.2" \
     HOST_CXX_COMPILER="/usr/local/cuda-8.0/ComputeCpp-CE-0.1.2-Linux/lib/clang" \
     HOST_C_COMPILER="/usr/local/cuda-8.0/ComputeCpp-CE-0.1.2-Linux/lib/clang" \
     COMPUTECPP_TOOLKIT_PATH="/usr/local/cuda-8.0/ComputeCpp-CE-0.1.2-Linux/"
