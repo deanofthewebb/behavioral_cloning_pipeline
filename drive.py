@@ -3,7 +3,8 @@ import base64
 from datetime import datetime
 import os
 import shutil
-
+import pickle
+import cv2
 import numpy as np
 import socketio
 import eventlet
@@ -47,6 +48,20 @@ controller = SimplePIController(0.1, 0.002)
 set_speed = 9
 controller.set_desired(set_speed)
 
+WORKING_DIRECTORY = 'data/'
+DATACACHE_DIRECTORY = os.path.join(WORKING_DIRECTORY, 'datacache/')
+keras_pickle = os.path.join(DATACACHE_DIRECTORY,"keras_pickle.p")
+with open(keras_pickle, mode='rb') as f:
+    keras_hyperparameters = pickle.load(f)
+    
+
+def resize_image(image, keras_hyperparameters):
+    img = np.copy(image)
+    shape = img.shape
+    # Crop numpy array of image to remove extraneous pixels
+    img = img[keras_hyperparameters['YCROP_START']:keras_hyperparameters['YCROP_STOP'], keras_hyperparameters['XCROP_START']:keras_hyperparameters['XCROP_STOP']]
+    scaled = cv2.resize(img,(keras_hyperparameters['SCALED_LENGTH'], keras_hyperparameters['SCALED_WIDTH']), interpolation=cv2.INTER_AREA)    
+    return scaled
 
 @sio.on('telemetry')
 def telemetry(sid, data):
@@ -61,6 +76,7 @@ def telemetry(sid, data):
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
+        image_array = resize_image(image_array, keras_hyperparameters)
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
 
         throttle = controller.update(float(speed))
