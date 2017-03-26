@@ -144,28 +144,21 @@ Once the dataset was extracted, I began the preprocessing and image augmentation
 ---
 ![alt Image Augmentation Functions][image3]
 
-- To capture good driving behavior in the simulator, I first recorded three laps (on track one) and combined it with the Udacity provided dataset, using a random selection of the three cameras in use while driving.
-<br/>
-- I also reversed direction and drove the course in reverse. This was used to help the code generalize the steering angles irrespective of the direction on the course.
-<br/>
-- To augment the data correctly, I used a scaled steering angle and either added or subtracted an offset value.
-<br/>
-- I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to veer back towards the center while driving.
-<br/>
-- To further augment the data set, I also flipped images and angles thinking that this would mimic the actual data set results of driving the course in reverse.
-<br>
-- I use a convolution neural network model similar to the end-to-end Nvidia architecture, but I initially started out with the commai AI model, I had many initial problems with that model, but it was likely due to other issues instead of the model's architecture itself. I thought this model might be appropriate because many SDC students had successful results training with the Nvidia model. I personally had the goal of creating and training a model that was robust enough to drive on multiple tracks.
-<br>
-- In order to gauge how well the model was working, I split my image and steering angle data into a training and validation sets and trained the model using a generator function:
+#### 3. Creation of the Training Set & Training Process - Cont
+
+* To capture good driving behavior in the simulator, I first recorded three laps (on track one) and combined it with the Udacity provided dataset, using a random selection of the three cameras in use while driving.
+* I also reversed direction and drove the course in reverse. This was used to help the code generalize the steering angles irrespective of the direction on the course.
+* To augment the data correctly, I used a scaled steering angle and either added or subtracted an offset value.
+* I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to veer back towards the center while driving.
+* To further augment the data set, I also flipped images and angles thinking that this would mimic the actual data set results of driving the course in reverse.
+* I use a convolution neural network model similar to the end-to-end Nvidia architecture, but I initially started out with the commai AI model, I had many initial problems with that model, but it was likely due to other issues instead of the model's architecture itself. I thought this model might be appropriate because many SDC students had successful results training with the Nvidia model. I personally had the goal of creating and training a model that was robust enough to drive on multiple tracks.
+* In order to gauge how well the model was working, I split my image and steering angle data into a training and validation sets and trained the model using a generator function:
 
 ![alt Image Augmentation Functions][image3]
 
 ---
-<br>
-- The final step was to run the simulator to see how well the car was driving around track one. I found that my first Comma AI would successfully train until there was a low mean squared error on the training set and on the validation set, but the resulting weights file was enormous! (over 800 MB). While I wasn't sure, this implied that I ws doing something very wrong.
-<br>
-- Somewhat frustrated, I then set out to discover more advanced image augmentation techniques and studied the advanced lane line tracking concepts before revisiting my model. This turned out to be a good decision because I had a much better understanding of the image augmentation techniques and quickly found my errors in my augmentation methods. For example, the biggest problem with my model before was that I wasn't scaling the image or the steering angles correctly. As a result, the car would either not drive at all, or behave erratically on the track. The issue with image scaling forced me to eliminate any resizing, which resulted in much longer training time. I was faced with a problem of not being able to continue progress, as the training time tooks simply too long to effectively test and debug.
-<br>
-- To overcome this obstacle, I wrote a [Docker script](https://medium.com/@deanofthewebb/dockerized-installation-of-tensorflow-1-0-from-source-with-gpu-support-77646cd25f92#.58prkfhl0) to run a container on AWS. At the time of completion, my script correctly compiled and installed Tensorflow 1.0 (with GPU) from source. However, there are currently some minor breaking changes introduced from AWS updating the Nvidia drivers for g2.8xlarge instances (from 367.XX to 375.XX). This upgrade broke support for nvidia-driver, however, the p2 instances seemed unaffected.
-<br>
-- Finally, after revisiting the project with GPU support a better understanding, I was able to successfully correct my errors and complete the project, the vehicle is able to drive autonomously **indefinitely** around the track without leaving the road.
+
+* The final step was to run the simulator to see how well the car was driving around track one. I found that my first Comma AI would successfully train until there was a low mean squared error on the training set and on the validation set, but the resulting weights file was enormous! (over 800 MB). While I wasn't sure, this implied that I ws doing something very wrong.
+* Somewhat frustrated, I then set out to discover more advanced image augmentation techniques and studied the advanced lane line tracking concepts before revisiting my model. This turned out to be a good decision because I had a much better understanding of the image augmentation techniques and quickly found my errors in my augmentation methods. For example, the biggest problem with my model before was that I wasn't scaling the image or the steering angles correctly. As a result, the car would either not drive at all, or behave erratically on the track. The issue with image scaling forced me to eliminate any resizing, which resulted in much longer training time. I was faced with a problem of not being able to continue progress, as the training time tooks simply too long to effectively test and debug.
+* To overcome this obstacle, I wrote a [Docker script](https://medium.com/@deanofthewebb/dockerized-installation-of-tensorflow-1-0-from-source-with-gpu-support-77646cd25f92#.58prkfhl0) to run a container on AWS. At the time of completion, my script correctly compiled and installed Tensorflow 1.0 (with GPU) from source. However, there are currently some minor breaking changes introduced from AWS updating the Nvidia drivers for g2.8xlarge instances (from 367.XX to 375.XX). This upgrade broke support for nvidia-driver, however, the p2 instances seemed unaffected.
+* Finally, after revisiting the project with GPU support a better understanding, I was able to successfully correct my errors and complete the project, the vehicle is able to drive autonomously **indefinitely** around the track without leaving the road.
