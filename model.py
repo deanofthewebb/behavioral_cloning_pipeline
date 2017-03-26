@@ -1,12 +1,8 @@
 
 # coding: utf-8
 
-# [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
-# ## Dean Webb - Vehicle Detection & Tracking Pipeline
-#
-
-get_ipython().magic('matplotlib inline')
-get_ipython().magic("config InlineBackend.figure_format = 'retina'")
+get_ipython().magic(u'matplotlib inline')
+get_ipython().magic(u"config InlineBackend.figure_format = 'retina'")
 import gzip
 import urllib.request
 import zipfile
@@ -21,6 +17,27 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import cv2
 
+
+# In[3]:
+
+def maybe_download(filename):
+    zipped_file = os.path.join(WORKING_DIRECTORY, DATASET_FILE)
+    if not os.path.exists(os.path.join(WORKING_DIRECTORY, DATASET_DIRECTORY)):
+        if not os.path.exists(WORKING_DIRECTORY):
+            os.mkdir(WORKING_DIRECTORY)
+
+        #Download file from S3 bucket if not found locally
+        if not os.path.exists(os.path.join(WORKING_DIRECTORY, filename)):
+            filepath = os.path.join(WORKING_DIRECTORY, DATASET_FILE)
+            zipped_file, _ = urllib.request.urlretrieve(SOURCE_URL, filepath)
+            statinfo = os.stat(filepath)
+            print('Succesfully downloaded:', SOURCE_URL, '| % d MB.' % int(statinfo.st_size*1e-6))
+
+        #Unzip Downloaded File
+        unzip_file(zipped_file, os.path.join(WORKING_DIRECTORY))
+
+
+# In[7]:
 
 # Dataset Parameters
 DRIVING_LOG_CSV = 'driving_log.csv'
@@ -45,22 +62,7 @@ DATACACHE_DIRECTORY = os.path.join(WORKING_DIRECTORY, 'datacache/')
 MODEL_DATA = 'model.h5'
 
 
-def maybe_download(filename):
-    zipped_file = os.path.join(WORKING_DIRECTORY, DATASET_FILE)
-    if not os.path.exists(os.path.join(WORKING_DIRECTORY, DATASET_DIRECTORY)):
-        if not os.path.exists(WORKING_DIRECTORY):
-            os.mkdir(WORKING_DIRECTORY)
-
-        #Download file from S3 bucket if not found
-        if not os.path.exists(os.path.join(WORKING_DIRECTORY, filename)):
-            filepath = os.path.join(WORKING_DIRECTORY, DATASET_FILE)
-            zipped_file, _ = urllib.request.urlretrieve(SOURCE_URL, filepath)
-            statinfo = os.stat(filepath)
-            print('Succesfully downloaded:', SOURCE_URL, '| % d MB.' % int(statinfo.st_size*1e-6))
-
-        #Unzip Downloaded File
-        unzip_file(zipped_file, os.path.join(WORKING_DIRECTORY))
-
+# In[4]:
 
 def unzip_file(zipped_file, destination):
     print('Extracting zipped file: ', zipped_file)
@@ -75,6 +77,8 @@ def unzip_file(zipped_file, destination):
         shutil.rmtree(destination, ignore_errors=True)
 
 
+# In[5]:
+
 if os.path.exists(WORKING_DIRECTORY):
     shutil.rmtree(WORKING_DIRECTORY, ignore_errors=True)
 if os.path.exists(DATASET_DIRECTORY):
@@ -83,13 +87,21 @@ if os.path.exists(DATASET_DIRECTORY):
 maybe_download(DATASET_FILE)
 
 
+# In[8]:
+
 drive_data = pd.read_csv(os.path.join(WORKING_DIRECTORY,DATASET_DIRECTORY,DRIVING_LOG_CSV))
-## Use below in IPython notebook drive_data.head() ##
-# drive_data.head()
+
+
+# In[9]:
+
+drive_data.head()
+
 
 # ### Preprocessing - Image Augmentation
 #
 # Implement various [Image Augmentation](https://chatbotslife.com/using-augmentation-to-mimic-human-driving-496b569760a9#.jao9k5lb1) techniques as described by Vivek Yadav
+
+# In[10]:
 
 def resize_image(image):
     img = np.copy(image)
@@ -100,9 +112,7 @@ def resize_image(image):
     return scaled
 
 
-# ### Dataset - Load Data
-#
-# Start by importing the simulator data from the training_data directory. To avoid storing large files on github, I used an S3 bucket to store my images and auto-download when the directory does not exist.
+# In[12]:
 
 def warp_image(image,steer,trans_range):
     shape = image.shape
@@ -116,23 +126,7 @@ def warp_image(image,steer,trans_range):
     return warped_image,steering_angle
 
 
-def augment_brightness_camera_images(image):
-    v_ch = 2
-    img = np.copy(image)
-    hsv_img = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
-    hsv_img = np.float64(np.copy(hsv_img))
-
-    random_light = .5+np.random.uniform()
-    v_channel = hsv_img[:,:,v_ch]
-    hsv_img[:,:,v_ch] = v_channel*random_light
-
-    v_channel = hsv_img[:,:,v_ch]
-    hsv_img[:,:,v_ch][v_channel>255] = 255
-    hsv_img = np.uint8(np.copy(hsv_img))
-
-    aug_img = cv2.cvtColor(hsv_img,cv2.COLOR_HSV2RGB)
-    return img
-
+# In[13]:
 
 def randomly_add_shadow_effect(image):
     start_y = IMAGE_RES[0]*np.random.uniform()
@@ -158,12 +152,36 @@ def randomly_add_shadow_effect(image):
     return image
 
 
+# In[14]:
+
 def randomly_flip_image(image, measurement):
     if (np.random.randint(2) == 0):
         image = cv2.flip(image,1)
         measurement = -measurement
     return image, measurement
 
+
+# In[11]:
+
+def augment_brightness_camera_images(image):
+    v_ch = 2
+    img = np.copy(image)
+    hsv_img = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+    hsv_img = np.float64(np.copy(hsv_img))
+
+    random_light = .5+np.random.uniform()
+    v_channel = hsv_img[:,:,v_ch]
+    hsv_img[:,:,v_ch] = v_channel*random_light
+
+    v_channel = hsv_img[:,:,v_ch]
+    hsv_img[:,:,v_ch][v_channel>255] = 255
+    hsv_img = np.uint8(np.copy(hsv_img))
+
+    aug_img = cv2.cvtColor(hsv_img,cv2.COLOR_HSV2RGB)
+    return img
+
+
+# In[15]:
 
 def preprocess_image(line_data, features):
     random_index = np.random.randint(3)
@@ -196,10 +214,12 @@ def preprocess_image(line_data, features):
     return image, steering_angle
 
 
-## Scaling target variables
+# ### Scaling target variables
 # To make training the network easier, we'll standardize each of the continuous variables. That is, we'll shift and scale the variables such that they have zero mean and a standard deviation of 1.
 #
 # The scaling factors are saved so we can go backwards when we use the network for predictions.
+
+# In[16]:
 
 def get_scaled_features(target_fields = ['steering', 'throttle', 'brake', 'speed']):
     data=pd.read_csv(os.path.join(WORKING_DIRECTORY, DATASET_DIRECTORY, DRIVING_LOG_CSV))
@@ -214,6 +234,8 @@ def get_scaled_features(target_fields = ['steering', 'throttle', 'brake', 'speed
         data.loc[:, each] = (data[each] - mean)/std
     return data, scaled_feats
 
+
+# In[17]:
 
 import pandas as pd
 def generate_augmented_training_batch(pr_threshold = 1, batch_size = 256):
@@ -245,23 +267,7 @@ def generate_augmented_training_batch(pr_threshold = 1, batch_size = 256):
 
 # ### Train the Network - Implemented with Modified [Nvidia Architecture](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf)
 
-def augment_brightness_camera_images(image):
-    v_ch = 2
-    img = np.copy(image)
-    hsv_img = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
-    hsv_img = np.float64(np.copy(hsv_img))
-
-    random_light = .5+np.random.uniform()
-    v_channel = hsv_img[:,:,v_ch]
-    hsv_img[:,:,v_ch] = v_channel*random_light
-
-    v_channel = hsv_img[:,:,v_ch]
-    hsv_img[:,:,v_ch][v_channel>255] = 255
-    hsv_img = np.uint8(np.copy(hsv_img))
-
-    aug_img = cv2.cvtColor(hsv_img,cv2.COLOR_HSV2RGB)
-    return img
-
+# In[23]:
 
 import tensorflow as tf
 tf.python.control_flow_ops = tf
@@ -361,6 +367,3 @@ if override_datacache or not os.path.exists(keras_pickle):
                              'CORRECTION_ANGLE':CORRECTION_ANGLE
                             }
     pickle.dump(keras_hyperparameters, open(keras_pickle, "wb"))
-
-
-# In[ ]:
