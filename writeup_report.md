@@ -21,13 +21,18 @@ The following resources can be found in [Udacity's github repository](https://gi
 * writeup_template.md
 
 [//]: # (Image References)
-[image1]: examples/cnn-architecture.jpg "Model Visualization"
-[image2]: examples/preprocessing.jpg "Preprocessing Dataset Snippet"
-[image3]: examples/image_augmentation.jpg "Image Augmentation Snippet"
-[image4]: examples/generator_function.jpg "Generator Function"
-[image5]: examples/Network_Parameters.jpg "Network Parameters"
-[image6]: examples/download_dataset.jpg "Download Dataset"
-[image7]: examples/epoch.jpg "Epoch Validation Results"
+[image1]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/cnn-architecture.jpg "Model Visualization"
+[image2]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/preprocessing.jpg "Preprocessing Dataset Snippet"
+[image3]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/image_augmentation.jpg "Image Augmentation Snippet"
+[image4]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/generator_function.jpg "Generator Function"
+[image5]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/Network_Parameters.jpg "Network Parameters"
+[image6]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/download_dataset.jpg "Download Dataset"
+[image7]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/epoch.jpg "Epoch Validation Results"
+[image8]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/steering_plots.jpg "Steering Plots"
+[image9]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/steering_data.jpg "Steering Signal"
+[image10]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/steering_visualization.jpg "Steering Visuals"
+[image11]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/balance_steering_angles.jpg " Balance Steering Dataset Snippet"
+
 
 # <font color='red'> Rubric Points</font>
 
@@ -150,9 +155,37 @@ Once the dataset was extracted, I began the preprocessing and image augmentation
 <br/>
 - To augment the data correctly, I used a scaled steering angle and either added or subtracted an offset value.
 <br/>
-- I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to veer back towards the center while driving.
-<br/>
-- To further augment the data set, I also flipped images and angles thinking that this would mimic the actual data set results of driving the course in reverse.
+- I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to veer back towards the center while driving. Example data visualizations of the processes mentiond above can be seen below. This is for the purposes of satifying the project requirements:
+
+---
+
+![][image8]
+
+---
+
+---
+
+![][image9]
+
+---
+
+---
+
+![][image10]
+
+---
+
+As can be seen, the data read in from the simulator track comprises a left, right, and center camera, all with a corresponding steering angle with respect to their position. To further augment the data set, we can take advantage of the multiple cameras to further bolster our dataset. I utilized this technique and I also also flipped images and angles thinking that this would mimic the actual data set results of driving the course in reverse. This technique appears to be reliable data, as seen above.
+
+Furthermore, as can be seen in the graph above, I took into acount that majority of the dataset had a zero steering angle. I simply removed those values and instead intend to rely on a smoother distribution. As noted in my prior review, the straight angle (zero degree) has has a much higher likelihood to feed into model, where the real turn looks becomes very minor to system. This of course is accounted for by my image augmentation, and by me removing all data with a steering angle less than .25 (as seen below):
+
+---
+
+![][image11]
+
+---
+
+It becomes evident that it will be necessary to balance this dataset prior its use. If we use the data without further processing, the model would predict new steering angles with a very strong bias towards going straight, which would become problematic when turning.
 <br>
 - I use a convolution neural network model similar to the end-to-end Nvidia architecture, but I initially started out with the commai AI model, I had many initial problems with that model, but it was likely due to other issues instead of the model's architecture itself. I thought this model might be appropriate because many SDC students had successful results training with the Nvidia model. I personally had the goal of creating and training a model that was robust enough to drive on multiple tracks.
 <br>
