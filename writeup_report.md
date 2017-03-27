@@ -34,6 +34,7 @@ The following resources can be found in [Udacity's github repository](https://gi
 [image11]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/balance_steering_angles.jpg " Balance Steering Dataset Snippet"
 
 
+
 # <font color='red'> Rubric Points</font>
 
 In this section, I consider the [rubric points](https://review.udacity.com/#!/rubrics/432/view) individually and describe how I address each point in my implementation.  
@@ -43,13 +44,14 @@ In this section, I consider the [rubric points](https://review.udacity.com/#!/ru
 
 #### 1. Submission includes all required files and can be used to run the simulator in autonomous mode
 My project submission includes the following files:
-- model.py containing the script to create and train the model
+- model.py containing the script to create and train the neural network
 - behavioral-cloning-pipeline-setup.ipynb containing the model.py script for compiling interactively
-- drive.py for driving the car in autonomous mode (at 13 mph)
+- drive.py for driving the car in autonomous mode (at 9 mph)
 - drive_fast.py for driving the car in autonomous mode (at 18 mph)
 - drive_faster.py for driving the car in autonomous mode at full throttle (set to 30 mph)
 - model.h5 containing a trained convolution neural network
-- output/output_video.mp4 showing the test results of the vehicle in the simulator
+- output/run_6.mp4 shows a successful run using the my network's model on the vehicle simulator
+- output/model_3_run_5.mp4 is an additional successful on the vehicle simulator (in case its needed)
 - writeup_report.md (and writeup_report.pdf) summarizing the results
 
 ---

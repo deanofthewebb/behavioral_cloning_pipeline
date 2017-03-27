@@ -24,17 +24,17 @@
 # * writeup_template.md
 # 
 # [//]: # (Image References)
-# [image1]: examples/cnn-architecture.jpg "Model Visualization"
-# [image2]: examples/preprocessing.jpg "Preprocessing Dataset Snippet"
-# [image3]: examples/image_augmentation.jpg "Image Augmentation Snippet"
-# [image4]: examples/generator_function.jpg "Generator Function"
-# [image5]: examples/Network_Parameters.jpg "Network Parameters"
-# [image6]: examples/download_dataset.jpg "Download Dataset"
-# [image7]: examples/epoch.jpg "Epoch Validation Results"
-# [image8]: examples/steering_plots.jpg "Steering Plots"
-# [image9]: examples/steering_data.jpg "Steering Signal"
-# [image10]: examples/steering_visualization.jpg "Steering Visuals"
-# [image11]: examples/balance_steering_angles.jpg " Balance Steering Dataset Snippet"
+# [image1]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/cnn-architecture.jpg "Model Visualization"
+# [image2]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/preprocessing.jpg "Preprocessing Dataset Snippet"
+# [image3]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/image_augmentation.jpg "Image Augmentation Snippet"
+# [image4]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/generator_function.jpg "Generator Function"
+# [image5]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/Network_Parameters.jpg "Network Parameters"
+# [image6]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/download_dataset.jpg "Download Dataset"
+# [image7]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/epoch.jpg "Epoch Validation Results"
+# [image8]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/steering_plots.jpg "Steering Plots"
+# [image9]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/steering_data.jpg "Steering Signal"
+# [image10]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/steering_visualization.jpg "Steering Visuals"
+# [image11]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/balance_steering_angles.jpg " Balance Steering Dataset Snippet"
 # 
 # 
 # # <font color='red'> Rubric Points</font>
@@ -46,13 +46,14 @@
 # 
 # #### 1. Submission includes all required files and can be used to run the simulator in autonomous mode
 # My project submission includes the following files:
-# - model.py containing the script to create and train the model
+# - model.py containing the script to create and train the neural network
 # - behavioral-cloning-pipeline-setup.ipynb containing the model.py script for compiling interactively
-# - drive.py for driving the car in autonomous mode (at 13 mph)
+# - drive.py for driving the car in autonomous mode (at 9 mph)
 # - drive_fast.py for driving the car in autonomous mode (at 18 mph)
 # - drive_faster.py for driving the car in autonomous mode at full throttle (set to 30 mph)
 # - model.h5 containing a trained convolution neural network
-# - output/output_video.mp4 showing the test results of the vehicle in the simulator
+# - output/run_6.mp4 shows a successful run using the my network's model on the vehicle simulator
+# - output/model_3_run_5.mp4 is an additional successful on the vehicle simulator (in case its needed)
 # - writeup_report.md (and writeup_report.pdf) summarizing the results
 # 
 # ---
@@ -213,7 +214,7 @@
 # 
 # Start by importing the simulator data from the training_data directory. To avoid storing large files on github, I used an S3 bucket to store my images and auto-download when the directory does not exist.
 
-# In[2]:
+# In[1]:
 
 get_ipython().magic(u'matplotlib inline')
 get_ipython().magic(u"config InlineBackend.figure_format = 'retina'")
@@ -232,7 +233,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-# In[3]:
+# In[2]:
 
 def maybe_download(filename):
     zipped_file = os.path.join(WORKING_DIRECTORY, DATASET_FILE)
@@ -251,11 +252,12 @@ def maybe_download(filename):
         unzip_file(zipped_file, os.path.join(WORKING_DIRECTORY))
 
 
-# In[4]:
+# In[28]:
 
 # Dataset Parameters
 DRIVING_LOG_CSV = 'driving_log.csv'
 DATASET_DIRECTORY = 'data/'
+DATACACHE_DIRECTORY = 'datacache/'
 DATASET_FILE = 'driving_data.zip'
 WORKING_DIRECTORY = 'data/'
 SOURCE_URL = 'https://s3-us-west-1.amazonaws.com/sdc-gpu/data.zip'
@@ -276,7 +278,7 @@ DATACACHE_DIRECTORY = os.path.join(WORKING_DIRECTORY, 'datacache/')
 MODEL_DATA = 'model.h5'
 
 
-# In[42]:
+# In[4]:
 
 def unzip_file(zipped_file, destination):
     print('Extracting zipped file: ', zipped_file)
@@ -291,16 +293,16 @@ def unzip_file(zipped_file, destination):
         shutil.rmtree(destination, ignore_errors=True)
 
 
-# In[43]:
+# In[5]:
 
-def process_img(name):
-    image = cv2.imread(name)
+def process_img(filepath):
+    image = cv2.imread(filepath)
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     image = image/255.-.5
     return image
 
 
-# In[44]:
+# In[6]:
 
 if os.path.exists(WORKING_DIRECTORY):
     shutil.rmtree(WORKING_DIRECTORY, ignore_errors=True)
@@ -310,19 +312,19 @@ if os.path.exists(DATASET_DIRECTORY):
 maybe_download(DATASET_FILE)
 
 
-# In[242]:
+# In[7]:
 
 csv_path = os.path.join(WORKING_DIRECTORY,DATASET_DIRECTORY,DRIVING_LOG_CSV)
 drive_data = pd.read_csv(csv_path, header=0, names=['center','left','right','steering','throttle','break','direction'], index_col = False)
 drive_data['direction'] = pd.Series('s', index=drive_data.index)
 
 
-# In[243]:
+# In[8]:
 
 drive_data.head()
 
 
-# In[244]:
+# In[9]:
 
 len_plt = 200
 rev_steer_s = np.array(drive_data.steering,dtype=np.float32)
@@ -337,7 +339,7 @@ plt.ylim(-1,1);
 drive_data['steer_sm'] = pd.Series(steer_sm_s, index=drive_data.index)
 
 
-# In[257]:
+# In[10]:
 
 ind = drive_data['throttle']>.25
 drive_data= drive_data[ind].reset_index()
@@ -352,7 +354,7 @@ drive_data= drive_data[ind].reset_index()
 # 
 # The scaling factors are saved so we can go backwards when we use the network for predictions.
 
-# In[258]:
+# In[11]:
 
 index = 29
         
@@ -389,7 +391,7 @@ plt.axis('off');
 # 
 # This shift of `0.25` radians corresponsds to `6.25` degrees. The right camera would have to move left to come to center, and left camera would have to move right to come to center.
 
-# In[259]:
+# In[12]:
 
 angle_rot = 10
 trans_camera = 5
@@ -417,7 +419,7 @@ plt.imshow(image_rc_mod+.5)
 plt.axis('off');
 
 
-# In[260]:
+# In[13]:
 
 def plot_camera_images(data, steer_sm, index, deg = 0):
     filepath_l = data['left'][0].strip()
@@ -466,16 +468,16 @@ def plot_camera_images(data, steer_sm, index, deg = 0):
         plt.title('Steer:'+ str((np.round((steer_sm[index]-.1)*180/np.pi,2) )))
 
 
-# In[261]:
+# In[16]:
 
 for i in range(5):
-    index = np.random.randint(len(data)-1)
+    index = np.random.randint(len(drive_data)-1)
     plt.figure(figsize=(8,16))
-    plot_camera_images(data,steer_sm_s,index)
+    plot_camera_images(drive_data,steer_sm_s,index)
     plt.show()
 
 
-# In[262]:
+# In[17]:
 
 def resize_image(image):
     img = np.copy(image)
@@ -486,7 +488,7 @@ def resize_image(image):
     return scaled
 
 
-# In[263]:
+# In[18]:
 
 def get_scaled_features(target_fields = ['steering', 'throttle', 'brake', 'speed']):
     data=pd.read_csv(os.path.join(WORKING_DIRECTORY, DATASET_DIRECTORY, DRIVING_LOG_CSV))
@@ -502,7 +504,7 @@ def get_scaled_features(target_fields = ['steering', 'throttle', 'brake', 'speed
     return data, scaled_feats
 
 
-# In[12]:
+# In[19]:
 
 def warp_image(image,steer,trans_range):
     shape = image.shape
@@ -516,7 +518,7 @@ def warp_image(image,steer,trans_range):
     return warped_image,steering_angle
 
 
-# In[13]:
+# In[20]:
 
 def randomly_add_shadow_effect(image):   
     start_y = IMAGE_RES[0]*np.random.uniform()
@@ -542,7 +544,7 @@ def randomly_add_shadow_effect(image):
     return image
 
 
-# In[14]:
+# In[21]:
 
 def randomly_flip_image(image, measurement):
     if (np.random.randint(2) == 0):
@@ -551,7 +553,7 @@ def randomly_flip_image(image, measurement):
     return image, measurement
 
 
-# In[11]:
+# In[22]:
 
 def augment_brightness_camera_images(image):
     v_ch = 2
@@ -571,7 +573,7 @@ def augment_brightness_camera_images(image):
     return img
 
 
-# In[15]:
+# In[23]:
 
 def preprocess_image(line_data, features):    
     random_index = np.random.randint(3)    
@@ -604,7 +606,7 @@ def preprocess_image(line_data, features):
     return image, steering_angle
 
 
-# In[17]:
+# In[26]:
 
 import pandas as pd
 def generate_augmented_training_batch(pr_threshold = 1, batch_size = 256):
@@ -636,7 +638,7 @@ def generate_augmented_training_batch(pr_threshold = 1, batch_size = 256):
 
 # ### Train the Network - Implemented with Modified [Nvidia Architecture](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf)
 
-# In[23]:
+# In[27]:
 
 import tensorflow as tf
 tf.python.control_flow_ops = tf
@@ -656,7 +658,7 @@ import sys
 
 #Hyperparameters
 batch_size = 256
-nb_epochs = 20
+nb_epochs = 1
 
 ## Using modified Nvidia model ## 
 inputs = Input(shape=DEFAULT_RESOLUTION)
@@ -715,13 +717,13 @@ for e in range(nb_epochs):
 model.save(MODEL_DATA)
 
 
-# In[19]:
+# In[29]:
 
 ## Save parameters to picklefile for drive.py
 target_fields = ['steering', 'throttle', 'brake', 'speed']
 _, scaled_feats = get_scaled_features(target_fields)
-
-override_datacache = True
+DATACACHE_DIRECTORY = os.path.join(WORKING_DIRECTORY, 'datacache/')
+override_datacache = False
 os.makedirs(DATACACHE_DIRECTORY, exist_ok=True)
 keras_pickle = os.path.join(DATACACHE_DIRECTORY,"keras_pickle.p")
 if override_datacache or not os.path.exists(keras_pickle): 
@@ -736,4 +738,9 @@ if override_datacache or not os.path.exists(keras_pickle):
                              'CORRECTION_ANGLE':CORRECTION_ANGLE
                             }
     pickle.dump(keras_hyperparameters, open(keras_pickle, "wb"))
+
+
+# In[ ]:
+
+
 
