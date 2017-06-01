@@ -21,17 +21,17 @@ The following resources can be found in [Udacity's github repository](https://gi
 * writeup_template.md
 
 [//]: # (Image References)
-[image1]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/cnn-architecture.jpg "Model Visualization"
-[image2]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/preprocessing.jpg "Preprocessing Dataset Snippet"
-[image3]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/image_augmentation.jpg "Image Augmentation Snippet"
-[image4]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/generator_function.jpg "Generator Function"
-[image5]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/Network_Parameters.jpg "Network Parameters"
-[image6]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/download_dataset.jpg "Download Dataset"
-[image7]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/epoch.jpg "Epoch Validation Results"
-[image8]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/steering_plots.jpg "Steering Plots"
-[image9]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/steering_data.jpg "Steering Signal"
-[image10]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/steering_visualization.jpg "Steering Visuals"
-[image11]: https://s3-us-west-1.amazonaws.com/sdc-gpu/examples/balance_steering_angles.jpg " Balance Steering Dataset Snippet"
+[image1]: examples/cnn-architecture.jpg "Model Visualization"
+[image2]: examples/preprocessing.jpg "Preprocessing Dataset Snippet"
+[image3]: examples/image_augmentation.jpg "Image Augmentation Snippet"
+[image4]: examples/generator_function.jpg "Generator Function"
+[image5]: examples/Network_Parameters.jpg "Network Parameters"
+[image6]: examples/download_dataset.jpg "Download Dataset"
+[image7]: examples/epoch.jpg "Epoch Validation Results"
+[image8]: examples/steering_plots.jpg "Steering Plots"
+[image9]: examples/steering_data.jpg "Steering Signal"
+[image10]: examples/steering_visualization.jpg "Steering Visuals"
+[image11]: examples/balance_steering_angles.jpg " Balance Steering Dataset Snippet"
 
 
 # <font color='red'> Rubric Points</font>
