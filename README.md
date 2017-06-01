@@ -25,7 +25,7 @@ The following resources can be found in [Udacity's github repository](https://gi
 [image2]: examples/preprocessing.jpg "Preprocessing Dataset Snippet"
 [image3]: examples/image_augmentation.jpg "Image Augmentation Snippet"
 [image4]: examples/generator_function.jpg "Generator Function"
-[image5]: examples/Network_parameters.png "Network Parameters"
+[image5]: examples/Network_parameters.jpg "Network Parameters"
 [image6]: examples/download_dataset.jpg "Download Dataset"
 [image7]: examples/epoch.jpg "Epoch Validation Results"
 [image8]: examples/steering_plots.jpg "Steering Plots"
